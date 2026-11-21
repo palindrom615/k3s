@@ -92,7 +92,7 @@ func (e *Embedded) Bootstrap(ctx context.Context, nodeConfig *daemonconfig.Node,
 		}
 	})
 
-	if nodeConfig.Flannel.Backend != flannel.BackendNone {
+	if nodeConfig.Flannel.Backend != flannel.BackendNone && nodeConfig.ContainerRuntimeEndpoint != "/dev/null" {
 		var err error
 
 		if len(cfg.FlannelIface) > 0 {
