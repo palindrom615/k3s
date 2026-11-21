@@ -1,0 +1,46 @@
+//go:build darwin
+
+package agent
+
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/k3s-io/k3s/pkg/cli/cmds"
+	"github.com/k3s-io/k3s/pkg/daemons/config"
+)
+
+const (
+	criDockerdSock = "unix:///run/k3s/cri-dockerd/cri-dockerd.sock"
+	containerdSock = "unix:///run/k3s/containerd/containerd.sock"
+)
+
+func setupCriCtlConfig(cfg cmds.Agent, nodeConfig *config.Node) error {
+	cre := nodeConfig.ContainerRuntimeEndpoint
+	if cre == "" {
+		switch {
+		case cfg.Docker:
+			cre = criDockerdSock
+		default:
+			cre = containerdSock
+		}
+	}
+
+	agentConfDir := filepath.Join(cfg.DataDir, "agent", "etc")
+	if _, err := os.Stat(agentConfDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(agentConfDir, 0700); err != nil {
+			return err
+		}
+	}
+
+	if cfg.DefaultRuntime != "" {
+		nodeConfig.DefaultRuntime = cfg.DefaultRuntime
+	}
+
+	crp := "runtime-endpoint: " + cre + "\n"
+	ise := nodeConfig.ImageServiceEndpoint
+	if ise != "" && ise != cre {
+		crp += "image-endpoint: " + ise + "\n"
+	}
+	return os.WriteFile(agentConfDir+"/crictl.yaml", []byte(crp), 0600)
+}
